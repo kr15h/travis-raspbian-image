@@ -1,0 +1,16 @@
+dist: trusty
+sudo: required
+addons:
+  apt:
+    packages:
+    - qemu
+    - qemu-user-static
+    - binfmt-support
+    - parted
+    - wget
+    - dosfstools
+    - zip
+script:
+- sudo bash ./create-image
+- xz -z rpizw-rover.img -c > rpizw-rover.img.xz
+- zip rpizw-rover.img.zip rpizw-rover.img
