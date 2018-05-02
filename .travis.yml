@@ -12,15 +12,13 @@ addons:
     - zip
 script:
 - sudo bash ./create-image
-- xz -z rpizw-rover.img -c > rpizw-rover.img.xz
-- zip rpizw-rover.img.zip rpizw-rover.img
+- zip opm.img.zip opm.img
 deploy:
   provider: releases
   api_key:
     secure: sVW7QBkjipwb8qpZtU/pabShtUdEjoq0McxeYUUr5h8CI56RJks6YHChK54eC8TcutwJJkRpG9HCtU0oatKcPZJP3XpV28sjGfSTg+T/hadQ/9aMMAL1zzMGmCnhgqf617B1T9H3e59Y9swT/UVGjvVZ93WByaLFue5Xo8cLF7Ak9ECXZh2xpvaNRAe+OLjB63ZyHIa/m2EsPLnQli0mmS9jnT50IA1IXCOwVbfr3LystZP7Yh9zVM9QxUnYDkbKAF3XECQAu+32ftFoGhlfHEjugbVScXF63HYaULOFv4hgxQmMNrL2ZVFYaAk1OSepevBWz3zm9ClydBEQuaaQiLgoCAoxZGZLXZa9p5O+Th84fshFim7y/Iyl6D2O/rkO99cHOufeMVDn0xiFPq6E0Sz8c5snSbQhGu/E+LxtMyTmxUt2Ol/pMiqSO87EwTeUH0lkiyG395N3h45m5kxKKhjC5DLQxEfLos7aewYTATX4MdnXReX6iXTuO9DfUhk0uS0ltHrxxElfsJmAIffM2fL68b1ulL8ySN2trE9B+D3mrpTjGXJOd4RFpOvWxjW0Ci7Dq3sRhZNnqfgSCe/UohXUfA0uP6icHcmhB+Jxs3sHIbjZdSoXMn8UY+xlg1JQAAElVmxHF95zZjJ/bSZPDqhH4KJCmGtoNi0HmgcxP4g=
   file:
-    - "rpizw-rover.img.xz"
-    - "rpizw-rover.img.zip"
+    - "opm.img.zip"
   skip_cleanup: true
   on:
     tags: true
