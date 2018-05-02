@@ -5,5 +5,35 @@
 #apt-get install git
 
 echo "Hello. This is setup."
+
+echo "Setting hostname."
+echo opm > /etc/hostname
+
+echo "Setting gpu_mem."
+if grep -q "gpu_mem" /boot/config.txt
+then
+    sed -i "s/gpu_mem.*/gpu_mem=256/" /boot/config.txt
+else
+    echo "gpu_mem=256" >> /boot/config.txt
+fi
+
+echo "Installing packages."
 apt-get -y update
 apt-get -y install git
+
+echo "Downloading openFrameworks."
+cd /home/pi
+wget http://openframeworks.cc/versions/v0.9.8/of_v0.9.8_linuxarmv6l_release.tar.gz
+mkdir openFrameworks
+tar vxfz of_v0.9.8_linuxarmv6l_release.tar.gz -C openFrameworks --strip-components 1
+cd /home/pi/openFrameworks/scripts/linux/debian
+sudo ./install_dependencies.sh
+make Release -C /home/pi/openFrameworks/libs/openFrameworksCompiled/project
+cd /home/pi/openFrameworks/examples/graphics/polygonExample
+make
+
+echo "Setting up to run on boot."
+crontab -l > mycron
+echo "@reboot /home/pi/openFrameworks/examples/graphics/polygonExample/bin/polygonExample" >> mycron
+crontab mycron
+rm mycron
