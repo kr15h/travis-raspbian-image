@@ -1,6 +1,6 @@
 # travis-pi-image
 
-[![Build Status](https://travis-ci.org/kr15h/travis-pi-image.svg?branch=master)](https://travis-ci.org/kr15h/travis-pi-image)
+[![Build Status](https://travis-ci.org/kr15h/travis-raspbian-image.svg?branch=master)](https://travis-ci.org/kr15h/travis-raspbian-image)
 
 Test repo for creating customised Raspberry Pi images with Travis CI
 
@@ -135,5 +135,12 @@ mount -o loop,offset=$off1 opm.img mnt/boot
 
 [Here is another guide](https://wiki.debian.org/RaspberryPi/qemu-user-static) that includes how you can modify the disk image size (very important, since I want to install a lot of packages!!!)
 
+First you would need to add some bytes to the disk image. In this example we add 1G.
+
+```
+dd if=/dev/zero bs=1M count=1024 >> opm.img
+```
+
+Then we want to moun
 
 
