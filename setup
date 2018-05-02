@@ -6,6 +6,9 @@
 
 echo "Hello. This is setup."
 
+echo "Checking disk space."
+df -h
+
 echo "Setting hostname."
 echo opm > /etc/hostname
 
@@ -27,7 +30,11 @@ wget http://openframeworks.cc/versions/v0.9.8/of_v0.9.8_linuxarmv6l_release.tar.
 mkdir openFrameworks
 tar vxfz of_v0.9.8_linuxarmv6l_release.tar.gz -C openFrameworks --strip-components 1
 cd /home/pi/openFrameworks/scripts/linux/debian
-sudo ./install_dependencies.sh
+
+# This is needed to install everything automatically
+sed -i "s/apt-get/apt-get -y/g" install_dependencies.sh
+
+./install_dependencies.sh
 make Release -C /home/pi/openFrameworks/libs/openFrameworksCompiled/project
 cd /home/pi/openFrameworks/examples/graphics/polygonExample
 make
