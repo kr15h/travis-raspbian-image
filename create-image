@@ -76,7 +76,7 @@ echo "Offset P1: $off1 bytes"
 echo "Offset P2: $off2 bytes"
 
 # Configure loopback device to expand partition 2
-loopdev=$(losetup -fP --show "${image}")
+loopdev=$(losetup --find --show "${image}")
 echo "Created loopback device ${loopdev}"
 
 parted --script "${loopdev}" print
