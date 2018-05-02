@@ -1,6 +1,7 @@
 #!/bin/bash
+
 # Setup script error handling see https://disconnected.systems/blog/another-bash-strict-mode for details
-set -uo pipefail
+set -xuo pipefail
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 IFS=$'\n\t'
 
@@ -11,24 +12,20 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Some useful constants
-mount="mnt" # Local directory to mount the image (automatically created/delete as needed)
-script="setup" # Local setup script to run inside the image
-rpi_tar="ArchLinuxARM-rpi-latest.tar.gz" # Raspberry pi 1 image others can be found on https://archlinuxarm.org/
-rpi_url="http://archlinuxarm.org/os/${rpi_tar}"
+image="${2:-opm.img}"
+mount="mnt"
+script="setup"
+rpi_zip="2017-07-05-raspbian-jessie-lite.zip"
+rpi_url="http://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2017-07-05/${rpi_zip}"
 
-# Grab the first two arguments, using the defaults if not set
-# This allows running the command as any of
-#   ./create-image                 # to use the defaults
-#   ./create-image 4G              # create a 4 gig image instead of 2 gig
-#   ./create-image 4G myname.img   # create a 4 gig image called myname.img
-size="${1:-2G}"
-image="${2:-rpizw-rover.img}"
-
-# Tasks to run when the shell exits for any reason, unmount the image and
-# general cleanup
+# Unmount drives and general cleanup on exit, the trap ensures this will always
+# run execpt in the most extream cases.
 cleanup() {
     [[ -f "${mount}/tmp/${script}" ]] && rm "${mount}/tmp/${script}"
     if [[ -d "${mount}" ]]; then
+        rm "${mount}/etc/ld.so.preload"
+        mv "${mount}/etc/_ld.so.preload" "${mount}/etc/ld.so.preload"
+        umount "${mount}/dev/pts" || true
         umount "${mount}/dev" || true
         umount "${mount}/proc" || true
         umount "${mount}/sys" || true
@@ -36,43 +33,80 @@ cleanup() {
         umount "${mount}" || true
         rmdir "${mount}" || true
     fi
-    [ -n "${loopdev}" ] && losetup --detach "${loopdev}" || true
 }
 trap cleanup EXIT
 
-# Download archlinux arm only if we have not already done so
-[ ! -f "${rpi_tar}" ] && wget "${rpi_url}"
+# Grab the first two arguments, using the defaults if not set
+# This allows running the command as any of
+#   ./create-image                 # to use the defaults
+#   ./create-image 4G              # create a 4 gig image instead of 2 gig
+#   ./create-image 4G myname.img   # create a 4 gig image called myname.img
+#size="${1:-2G}"
+#image="${2:-image.img}"
 
-# Create, partition and format the image
-fallocate -l "${size}" "${image}"
-loopdev=$(losetup --find --show "${image}")
-parted --script "${loopdev}" mklabel msdos
-parted --script "${loopdev}" mkpart primary fat32 0% 100M
-parted --script "${loopdev}" mkpart primary ext4 100M 100%
-bootdev=$(ls "${loopdev}"*1)
-rootdev=$(ls "${loopdev}"*2)
-mkfs.vfat -F32 ${bootdev}
-mkfs.ext4 -F ${rootdev}
+# Download raspbian arm only if we have not already done so
+[ ! -f "${rpi_zip}" ] && wget "${rpi_url}"
 
-# Mount the image
-[ ! -d "${mount}" ] && mkdir "${mount}"
-mount "${rootdev}" "${mount}"
-[ ! -d "${mount}/boot" ] && mkdir "${mount}/boot"
-mount "${bootdev}" "${mount}/boot"
+# Clean the existing image files
+(ls *.img >> /dev/null 2>&1 && rm *.img) || echo "no .img files to remove"
 
-# Install archlinuxarm to the image
-tar -xpf "${rpi_tar}" -C ${mount} 2> >(grep -v "Ignoring unknown extended header keyword")
+# Unzip Raspbian
+# -u  update files, create if necessary
+unzip -u "${rpi_zip}"
 
-# Copy our installation script to the mount so it can be run in the chroot
+mv "$(ls *.img | head -n 1)" "${image}"
+
+# Add 1G to the image size
+dd if=/dev/zero bs=1M count=1024 >> "${image}"
+
+# Get sector size of the image file
+secsize=$(fdisk -l $image | grep "Sector size" | sed -r "s/[^0-9]*([0-9]+).*/\1/")
+echo "Sector size: $secsize"
+
+# Get the start sectors for both partitions
+start1=$(fdisk -l $image | grep ".img1" | sed -r "s/[^0-9]*[0-9][^0-9]*([0-9]+).*/\1/")
+start2=$(fdisk -l $image | grep ".img2" | sed -r "s/[^0-9]*[0-9][^0-9]*([0-9]+).*/\1/")
+echo "Part 1 start: $start1"
+echo "Part 2 start: $start2"
+
+# Calculate offset in bytes for both partitions
+off1="$(($secsize*$start1))"
+off2="$(($secsize*$start2))"
+echo "Offset P1: $off1 bytes"
+echo "Offset P2: $off2 bytes"
+
+# Configure loopback device to expand partition 2
+loopdev=$(losetup -f -P --show "${image}")
+echo "Created loopback device ${loopdev}"
+
+parted --script "${loopdev}" print
+parted --script "${loopdev}" rm 2
+parted --script "${loopdev}" mkpart primary "${off2}B" 100%
+parted --script "${loopdev}" print
+
+e2fsck -f "${loopdev}p2"
+resize2fs "${loopdev}p2"
+
+# Clean up loopback device
+losetup -d "${loopdev}"
+
+# Mount the image file
+mkdir "${mount}"
+mount -o loop,offset="${off2}" "${image}" "${mount}"
+mount -o loop,offset="${off1}" "${image}" "${mount}/boot"
+
+# Copy our installtion script and other artifacts
 install -Dm755 "${script}" "${mount}/tmp/${script}"
 
 # Prep the chroot
-mount -t proc none ${mount}/proc
-mount -t sysfs none ${mount}/sys
-mount -o bind /dev ${mount}/dev
-rm ${mount}/etc/resolv.conf
-cp /etc/resolv.conf ${mount}/etc/resolv.conf
-cp /usr/bin/qemu-arm-static ${mount}/usr/bin/
+mount --bind /proc "${mount}/proc"
+mount --bind /sys "${mount}/sys"
+mount --bind /dev "${mount}/dev"
+mount --bind /dev/pts "${mount}/dev/pts"
+rm "${mount}/etc/resolv.conf"
+cp /etc/resolv.conf "${mount}/etc/resolv.conf"
+cp /usr/bin/qemu-arm-static "${mount}/usr/bin/"
+mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
+touch "${mount}/etc/ld.so.preload"
 
-# Run the setup script inside the chroot
-chroot ${mount}  "/tmp/${script}"
+chroot "${mount}" "/tmp/${script}"
