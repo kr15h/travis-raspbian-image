@@ -6,6 +6,11 @@
 
 echo "Hello. This is setup."
 
+# Give me number of cores avail!
+cores=$(nproc)
+echo "Number of processor cores: ${cores}"
+
+# Debug disk space.
 echo "Checking disk space."
 df -h
 
@@ -35,9 +40,9 @@ cd /home/pi/openFrameworks/scripts/linux/debian
 sed -i "s/apt-get/apt-get -y/g" install_dependencies.sh
 
 ./install_dependencies.sh
-make Release -C /home/pi/openFrameworks/libs/openFrameworksCompiled/project
+make -j $(nproc) Release -C /home/pi/openFrameworks/libs/openFrameworksCompiled/project
 cd /home/pi/openFrameworks/examples/graphics/polygonExample
-make
+make -j $(nproc)
 
 echo "Setting up to run on boot."
 crontab -l > mycron
