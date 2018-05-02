@@ -1,4 +1,4 @@
-# travis-pi-image
+# travis-raspbian-image
 
 [![Build Status](https://travis-ci.org/kr15h/travis-raspbian-image.svg?branch=master)](https://travis-ci.org/kr15h/travis-raspbian-image)
 
