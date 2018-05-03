@@ -25,6 +25,9 @@ else
     echo "gpu_mem=256" >> /boot/config.txt
 fi
 
+echo "Disabling autoresize."
+sed -i "s:init=/usr/lib/raspi-config/init_resize.sh::"
+
 echo "Installing packages."
 apt-get -y update
 apt-get -y install git
