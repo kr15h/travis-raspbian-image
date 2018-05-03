@@ -74,22 +74,22 @@ echo "Offset P1: $off1 bytes"
 echo "Offset P2: $off2 bytes"
 
 # Add 1G to the image size
-#dd if=/dev/zero bs=1M count=1024 >> "${image}"
+dd if=/dev/zero bs=1M count=1024 >> "${image}"
 
 # Configure loopback device to expand partition 2
-#loopdev=$(losetup --find --show "${image}")
-#echo "Created loopback device ${loopdev}"
+loopdev=$(losetup --find --show "${image}")
+echo "Created loopback device ${loopdev}"
 
-#parted --script "${loopdev}" print
-#parted --script "${loopdev}" rm 2
-#parted --script "${loopdev}" mkpart primary "${off2}B" 100%
-#parted --script "${loopdev}" print
+parted --script "${loopdev}" print
+parted --script "${loopdev}" rm 2
+parted --script "${loopdev}" mkpart primary "${off2}B" 100%
+parted --script "${loopdev}" print
 
-#e2fsck -f "${loopdev}p2"
-#resize2fs "${loopdev}p2"
+e2fsck -f "${loopdev}p2"
+resize2fs "${loopdev}p2"
 
 # Clean up loopback device
-#losetup -d "${loopdev}"
+losetup -d "${loopdev}"
 
 # Mount the image file
 mkdir "${mount}"
