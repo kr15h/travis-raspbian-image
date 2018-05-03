@@ -107,7 +107,9 @@ mount --bind /dev/pts "${mount}/dev/pts"
 rm "${mount}/etc/resolv.conf"
 cp /etc/resolv.conf "${mount}/etc/resolv.conf"
 cp /usr/bin/qemu-arm-static "${mount}/usr/bin/"
-#mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
-#touch "${mount}/etc/ld.so.preload"
+mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
+touch "${mount}/etc/ld.so.preload"
 
 chroot "${mount}" "/tmp/${script}"
+
+mv "${mount}/etc/_ld.so.preload" "${mount}/etc/ld.so.preload"
