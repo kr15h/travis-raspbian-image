@@ -81,8 +81,9 @@ loopdev=$(losetup --find --show "${image}")
 echo "Created loopback device ${loopdev}"
 
 parted --script "${loopdev}" print
-parted --script "${loopdev}" rm 2
-parted --script "${loopdev}" mkpart primary "${off2}B" 100%
+#arted --script "${loopdev}" rm 2
+#parted --script "${loopdev}" mkpart primary "${off2}B" 100%
+parted --script "${loopdev}" resizepart 2 100%
 parted --script "${loopdev}" print
 
 e2fsck -f "${loopdev}p2"
@@ -106,7 +107,7 @@ mount --bind /dev "${mount}/dev"
 mount --bind /dev/pts "${mount}/dev/pts"
 rm "${mount}/etc/resolv.conf"
 cp /etc/resolv.conf "${mount}/etc/resolv.conf"
-cp /usr/bin/qemu-arm-static "${mount}/usr/bin/"
+cp /usr/bin/qemu-arm-static "${mount}/usr/bin"
 mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
 touch "${mount}/etc/ld.so.preload"
 
