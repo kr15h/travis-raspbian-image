@@ -95,9 +95,20 @@ losetup -d "${loopdev}"
 echo "Finished resizing disk image."
 
 # Mount the image file
-mkdir "${mount}"
-mount -o loop,offset="${off2}" "${image}" "${mount}"
-mount -o loop,offset="${off1}" "${image}" "${mount}/boot"
+#mkdir "${mount}"
+#mount -o loop,offset="${off2}" "${image}" "${mount}"
+#mount -o loop,offset="${off1}" "${image}" "${mount}/boot"
+
+loopdev=$(losetup --find --show "${image}")
+bootdev=$(ls "${loopdev}"*1)
+rootdev=$(ls "${loopdev}"*2)
+partprobe "${loopdev}"
+
+# Mount the image
+[ ! -d "${mount}" ] && mkdir "${mount}"
+mount "${rootdev}" "${mount}"
+[ ! -d "${mount}/boot" ] && mkdir "${mount}/boot"
+mount "${bootdev}" "${mount}/boot"
 
 # Copy our installtion script and other artifacts
 install -Dm755 "${script}" "${mount}/tmp/${script}"
@@ -116,9 +127,7 @@ touch "${mount}/etc/ld.so.preload"
 # We need to get the new PARTUUID for /boot/cmdline.txt and /etc/fstab.
 # Parted changes the PARTUUID fo the disk image, we need to get the new one.
 echo "Setting up new partuuid."
-blkidout=$(blkid "${image}")
-echo "${blkidout}"
-partuuid=$(blkid "${image}" | sed -r 's/[^0-9]*PTUUID=\"([a-zA-Z0-9]*).*/\1/')
+partuuid=$(blkid ${loopdev} | sed -r 's/[^0-9]*PTUUID="([a-zA-Z0-9]*).*/\1/')
 echo "New partuuid: ${partuuid}"
 
 echo "cmdline.txt before:"
