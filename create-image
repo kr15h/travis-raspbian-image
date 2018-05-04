@@ -138,7 +138,7 @@ echo "uuidp2: ${uuidp2}"
 
 echo "cmdline.txt before:"
 cat "${mount}/boot/cmdline.txt"
-sed -i "s/PARTUUID=[a-zA-Z0-9]*/UUID=${uuidp2}/" "${mount}/boot/cmdline.txt"
+sed -i "s/PARTUUID=[a-zA-Z0-9-]*/UUID=${uuidp2}/" "${mount}/boot/cmdline.txt"
 echo "cmdline.txt after:"
 cat "${mount}/boot/cmdline.txt"
 
