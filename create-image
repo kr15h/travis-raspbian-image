@@ -128,6 +128,8 @@ touch "${mount}/etc/ld.so.preload"
 # Parted changes the PARTUUID fo the disk image, we need to get the new one.
 echo "Setting up new partuuid."
 blkid -o export "${loopdev}"
+blkid -o export "${loopdev}p1"
+blkid -o export "${loopdev}p2"
 partuuid=$(blkid -o export "${loopdev}" | grep "PTUUID" | sed -r 's/PTUUID=([a-zA-Z0-9]*).*/\1/')
 echo "New partuuid: ${partuuid}"
 
