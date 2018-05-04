@@ -132,7 +132,7 @@ echo "Setting up boot partition mappings."
 
 echo "cmdline.txt before:"
 cat "${mount}/boot/cmdline.txt"
-sed -i "s/root=[a-zA-Z0-9-=]*/root=\/dev\/mmcblk0p2/" "${mount}/boot/cmdline.txt"
+sed -i "s/root=[^ ]*/root=\/dev\/mmcblk0p2/" "${mount}/boot/cmdline.txt"
 echo "cmdline.txt after:"
 cat "${mount}/boot/cmdline.txt"
 
