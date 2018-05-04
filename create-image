@@ -11,6 +11,8 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+blkid -v
+
 # Some useful constants
 image="opm.img"
 mount="mnt"
