@@ -92,6 +92,8 @@ resize2fs "${loopdev}p2"
 # Clean up loopback device
 losetup -d "${loopdev}"
 
+echo "Finished resizing disk image."
+
 # Mount the image file
 mkdir "${mount}"
 mount -o loop,offset="${off2}" "${image}" "${mount}"
@@ -110,6 +112,24 @@ cp /etc/resolv.conf "${mount}/etc/resolv.conf"
 cp /usr/bin/qemu-arm-static "${mount}/usr/bin"
 mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
 touch "${mount}/etc/ld.so.preload"
+
+# We need to get the new PARTUUID for /boot/cmdline.txt and /etc/fstab.
+# Parted changes the PARTUUID fo the disk image, we need to get the new one.
+echo "Setting up new partuuid."
+partuuid=$(blkid $image | sed -r 's/[^0-9]*PTUUID="([a-zA-Z0-9]*).*/\1/")'
+echo "New partuuid: ${partuuid}"
+
+echo "cmdline.txt before:"
+cat "${mount}/boot/cmdline.txt"
+sed -i "s/PARTUUID=[a-zA-Z0-9]+/PARTUUID=${partuuid}/" "${mount}/boot/cmdline.txt"
+echo "cmdline.txt after:"
+cat "${mount}/boot/cmdline.txt"
+
+echo "fstab before:"
+cat "${mount}/etc/fstab"
+sed -i "s/PARTUUID=[a-zA-Z0-9]+/PARTUUID=${partuuid}/g" "${mount}/etc/fstab"
+echo "fstab after:"
+cat "${mount}/etc/fstab"
 
 chroot "${mount}" "/tmp/${script}"
 
