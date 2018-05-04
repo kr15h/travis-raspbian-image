@@ -116,7 +116,7 @@ touch "${mount}/etc/ld.so.preload"
 # We need to get the new PARTUUID for /boot/cmdline.txt and /etc/fstab.
 # Parted changes the PARTUUID fo the disk image, we need to get the new one.
 echo "Setting up new partuuid."
-partuuid=$(blkid $image | sed -r 's/[^0-9]*PTUUID="([a-zA-Z0-9]*).*/\1/"')
+partuuid=$(blkid $image | sed -r 's/[^0-9]*PTUUID="([a-zA-Z0-9]*).*/\1/')
 echo "New partuuid: ${partuuid}"
 
 echo "cmdline.txt before:"
