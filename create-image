@@ -23,8 +23,6 @@ rpi_url="http://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-201
 cleanup() {
     [[ -f "${mount}/tmp/${script}" ]] && rm "${mount}/tmp/${script}"
     if [[ -d "${mount}" ]]; then
-#        rm "${mount}/etc/ld.so.preload"
-#        mv "${mount}/etc/_ld.so.preload" "${mount}/etc/ld.so.preload"
         umount "${mount}/dev/pts" || true
         umount "${mount}/dev" || true
         umount "${mount}/proc" || true
@@ -36,14 +34,6 @@ cleanup() {
     [ -n "${loopdev:-}" ] && losetup --detach "${loopdev}" || true
 }
 trap cleanup EXIT
-
-# Grab the first two arguments, using the defaults if not set
-# This allows running the command as any of
-#   ./create-image                 # to use the defaults
-#   ./create-image 4G              # create a 4 gig image instead of 2 gig
-#   ./create-image 4G myname.img   # create a 4 gig image called myname.img
-#size="${1:-2G}"
-#image="${2:-image.img}"
 
 # Download raspbian arm only if we have not already done so
 [ ! -f "${rpi_zip}" ] && wget "${rpi_url}"
@@ -57,22 +47,6 @@ unzip -u "${rpi_zip}"
 
 mv "$(ls *.img | head -n 1)" "${image}"
 
-# Get sector size of the image file
-secsize=$(fdisk -l $image | grep "Sector size" | sed -r "s/[^0-9]*([0-9]+).*/\1/")
-echo "Sector size: $secsize"
-
-# Get the start sectors for both partitions
-start1=$(fdisk -l $image | grep ".img1" | sed -r "s/[^0-9]*[0-9][^0-9]*([0-9]+).*/\1/")
-start2=$(fdisk -l $image | grep ".img2" | sed -r "s/[^0-9]*[0-9][^0-9]*([0-9]+).*/\1/")
-echo "Part 1 start: $start1"
-echo "Part 2 start: $start2"
-
-# Calculate offset in bytes for both partitions
-off1="$(($secsize*$start1))"
-off2="$(($secsize*$start2))"
-echo "Offset P1: $off1 bytes"
-echo "Offset P2: $off2 bytes"
-
 # Add 1G to the image size
 dd if=/dev/zero bs=1M count=1024 >> "${image}"
 
@@ -81,25 +55,17 @@ loopdev=$(losetup --find --show "${image}")
 echo "Created loopback device ${loopdev}"
 
 parted --script "${loopdev}" print
-#arted --script "${loopdev}" rm 2
-#parted --script "${loopdev}" mkpart primary "${off2}B" 100%
 parted --script "${loopdev}" resizepart 2 100%
 parted --script "${loopdev}" print
-
 e2fsck -f "${loopdev}p2"
 resize2fs "${loopdev}p2"
 
 # Clean up loopback device
-losetup -d "${loopdev}"
+#losetup -d "${loopdev}"
 
 echo "Finished resizing disk image."
 
-# Mount the image file
-#mkdir "${mount}"
-#mount -o loop,offset="${off2}" "${image}" "${mount}"
-#mount -o loop,offset="${off1}" "${image}" "${mount}/boot"
-
-loopdev=$(losetup --find --show "${image}")
+#loopdev=$(losetup --find --show "${image}")
 bootdev=$(ls "${loopdev}"*1)
 rootdev=$(ls "${loopdev}"*2)
 partprobe "${loopdev}"
@@ -110,7 +76,7 @@ mount "${rootdev}" "${mount}"
 [ ! -d "${mount}/boot" ] && mkdir "${mount}/boot"
 mount "${bootdev}" "${mount}/boot"
 
-# Copy our installtion script and other artifacts
+# Copy our installation script and other artifacts
 install -Dm755 "${script}" "${mount}/tmp/${script}"
 
 # Prep the chroot
@@ -124,29 +90,27 @@ cp /usr/bin/qemu-arm-static "${mount}/usr/bin"
 mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
 touch "${mount}/etc/ld.so.preload"
 
-# Raspbian images use PARTUUID in the /boot/cmdline.txt to 
-# boot from the /dev/mmcblk0p2. We are going to replace the PARTUUID
-# with the good old /dev/mmcblk0p2 again.
-# Since parted changed the
+# Replace /boot/cmdline.txt since it contains root device mapping to a PARTUUID that 
+# changed during parted resize. We try to disable the autoresize here as well.
 echo "Replace /boot/cmdline.txt"
 echo "cmdline.txt before:"
 cat "${mount}/boot/cmdline.txt"
-#sed -i "s/root=[a-zA-Z0-9-=]*/root=\/dev\/mmcblk0p2/" "${mount}/boot/cmdline.txt"
 echo "dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet" > "${mount}/boot/cmdline.txt"
 echo "cmdline.txt after:"
 cat "${mount}/boot/cmdline.txt"
 
+# Replace /etc/fstab since the non existing PARTUUID has to be changed here as well.
 echo "Replace /etc/fstab"
 echo "fstab before:"
 cat "${mount}/etc/fstab"
-#sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-01/\/dev\/mmcblk0p1/g" "${mount}/etc/fstab"
-#sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-02/\/dev\/mmcblk0p2/g" "${mount}/etc/fstab"
 echo "proc            /proc           proc    defaults          0       0" > "${mount}/etc/fstab"
 echo "/dev/mmcblk0p1  /boot           vfat    defaults          0       2" >> "${mount}/etc/fstab"
 echo "/dev/mmcblk0p2  /               ext4    defaults,noatime  0       1" >> "${mount}/etc/fstab"
 echo "fstab after:"
 cat "${mount}/etc/fstab"
 
+# Run the installation script as if we would be inside the Raspberry Pi
 chroot "${mount}" "/tmp/${script}"
 
+# Put back the old ld.so.preload script.
 mv "${mount}/etc/_ld.so.preload" "${mount}/etc/ld.so.preload"
