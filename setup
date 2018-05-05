@@ -45,6 +45,7 @@ then
 else
     echo "gpu_mem=${GPU_MEM}" >> /boot/config.txt
 fi
+cat /boot/config.txt | grep "gpu_mem"
 
 echo "Installing packages."
 apt-get -y update
