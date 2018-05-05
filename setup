@@ -2,6 +2,12 @@
 
 echo "Hello. This is setup."
 
+# Set up openFrameworks constants
+OF_VERSION="v0.9.8"
+OF_FILE="of_v0.9.8_linuxarmv6l_release.tar.gz"
+OF_URL="http://openframeworks.cc/versions/$OF_VERSION/$OF_FILE"
+GPU_MEM=256
+
 # Replace /boot/cmdline.txt since it contains root device mapping to a PARTUUID that 
 # changed during parted resize. We try to disable the autoresize here as well.
 echo "Replace /boot/cmdline.txt"
@@ -30,13 +36,10 @@ cat /etc/hostname
 echo "Setting gpu_mem."
 if grep -q "gpu_mem" /boot/config.txt
 then
-    sed -i "s/gpu_mem.*/gpu_mem=256/" /boot/config.txt
+    sed -i "s/gpu_mem.*/gpu_mem=${GPU_MEM}/" /boot/config.txt
 else
-    echo "gpu_mem=256" >> /boot/config.txt
+    echo "gpu_mem=${GPU_MEM}" >> /boot/config.txt
 fi
-
-echo "Disabling autoresize."
-sed -i "s:init=/usr/lib/raspi-config/init_resize.sh::"
 
 echo "Installing packages."
 apt-get -y update
