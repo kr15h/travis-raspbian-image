@@ -141,6 +141,92 @@ First you would need to add some bytes to the disk image. In this example we add
 dd if=/dev/zero bs=1M count=1024 >> opm.img
 ```
 
-Then we want to moun
+After a few days of errors, there were more things on top of `grep` and `sed` that I learnt. First of all, to resize a martition, one does not need to use `mount` and calculate offsets. It is much easier to do it with `losetup`.
+
+To mount a `.img` file with `losetup` do the following.
+
+```
+loopdev=$(losetup --find --show "${image}")
+echo "Created loopback device ${loopdev}"
+```
+
+Use `parted` to resize the partition. 
+
+```
+parted --script "${loopdev}" print
+parted --script "${loopdev}" resizepart 2 100%
+parted --script "${loopdev}" print
+e2fsck -f "${loopdev}p2"
+resize2fs "${loopdev}p2"
+```
+
+Notice the `resizepart` command. In most tutorials one can find online, instead of using `resizepart` one has to remove the partition and create a new one which involves knowing where it starts in terms of blocks and bytes.
+
+You do not have to use `losetup -d /dev/loopN` if you want to mount the loop devices in order to access files and launch setup scripts. 
+
+Use the following to mount the loop device without knowing offsets or similar.
+
+```
+bootdev=$(ls "${loopdev}"*1)
+rootdev=$(ls "${loopdev}"*2)
+partprobe "${loopdev}"
+
+[ ! -d "${mount}" ] && mkdir "${mount}"
+mount "${rootdev}" "${mount}"
+[ ! -d "${mount}/boot" ] && mkdir "${mount}/boot"
+mount "${bootdev}" "${mount}/boot"
+```
+
+Then you install your script that contains all you would like to do from within the Raspberry Pi.
+
+```
+install -Dm755 "${script}" "${mount}/tmp/${script}"
+```
+
+For `qemu` you might need to mount additional directories.
+
+```
+mount --bind /proc "${mount}/proc"
+mount --bind /sys "${mount}/sys"
+mount --bind /dev "${mount}/dev"
+mount --bind /dev/pts "${mount}/dev/pts"
+```
+
+Change things on the filesystem for `qemu`.
+
+```
+cp /etc/resolv.conf "${mount}/etc/resolv.conf"
+cp /usr/bin/qemu-arm-static "${mount}/usr/bin"
+cp "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
+echo "" > "${mount}/etc/ld.so.preload"
+```
+
+When we resized the image with `parted` the PARTUUID of the block device was changed. The latest Raspbian image files use the ID for boot purposes. The root boot device in `/boot/cmdline.txt` is set by using a PARTUUID. For some reason it is not possible to get the PARTUUID of a `.img` file on Travis. This is why we will use the good old `/dev/mmcblk0p2` as the root boot device. We also disable automatic expansion of the filesystem here.
+
+```
+echo "dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet" > "${mount}/boot/cmdline.txt"
+```
+
+Another thing that has to be changed is the `/etc/fstab` flie. The PARTUUID pats have to be changed to `/dev/mmcbnlk0p1` and `/dev/mmcblk0p2`  as well.
+
+```
+echo "proc            /proc           proc    defaults          0       0" > "${mount}/etc/fstab"
+echo "/dev/mmcblk0p1  /boot           vfat    defaults          0       2" >> "${mount}/etc/fstab"
+echo "/dev/mmcblk0p2  /               ext4    defaults,noatime  0       1" >> "${mount}/etc/fstab"
+``` 
+
+This can supposedly go into the script part as well. The reason it being present in the `create-image` part might be if one has to get the `PARTUUID` before and replace things with it in the `cmdline.txt` and `fstab` files.
+
+At this point we are ready to run the script as root.
+
+```
+chroot "${mount}" "/tmp/${script}"
+```
+
+And when it is done, we put the old `ld.so.preload` script in place.
+
+```
+mv "${mount}/etc/_ld.so.preload" "${mount}/etc/ld.so.preload"
+```
 
 
