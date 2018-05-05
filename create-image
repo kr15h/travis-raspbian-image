@@ -128,18 +128,22 @@ touch "${mount}/etc/ld.so.preload"
 # boot from the /dev/mmcblk0p2. We are going to replace the PARTUUID
 # with the good old /dev/mmcblk0p2 again.
 # Since parted changed the
-echo "Setting up boot partition mappings."
-
+echo "Replace /boot/cmdline.txt"
 echo "cmdline.txt before:"
 cat "${mount}/boot/cmdline.txt"
-sed -i "s/root=[a-zA-Z0-9-=]*/root=\/dev\/mmcblk0p2/" "${mount}/boot/cmdline.txt"
+#sed -i "s/root=[a-zA-Z0-9-=]*/root=\/dev\/mmcblk0p2/" "${mount}/boot/cmdline.txt"
+echo "dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait quiet" > "${mount}/boot/cmdline.txt"
 echo "cmdline.txt after:"
 cat "${mount}/boot/cmdline.txt"
 
+echo "Replace /etc/fstab"
 echo "fstab before:"
 cat "${mount}/etc/fstab"
-sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-01/\/dev\/mmcblk0p1/g" "${mount}/etc/fstab"
-sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-02/\/dev\/mmcblk0p2/g" "${mount}/etc/fstab"
+#sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-01/\/dev\/mmcblk0p1/g" "${mount}/etc/fstab"
+#sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-02/\/dev\/mmcblk0p2/g" "${mount}/etc/fstab"
+echo "proc            /proc           proc    defaults          0       0" > "${mount}/etc/fstab"
+echo "/dev/mmcblk0p1  /boot           vfat    defaults          0       2" >> "${mount}/etc/fstab"
+echo "/dev/mmcblk0p2  /               ext4    defaults,noatime  0       1" >> "${mount}/etc/fstab"
 echo "fstab after:"
 cat "${mount}/etc/fstab"
 
