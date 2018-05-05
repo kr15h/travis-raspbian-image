@@ -124,28 +124,22 @@ cp /usr/bin/qemu-arm-static "${mount}/usr/bin"
 mv "${mount}/etc/ld.so.preload" "${mount}/etc/_ld.so.preload"
 touch "${mount}/etc/ld.so.preload"
 
-# We need to get the new PARTUUID for /boot/cmdline.txt and /etc/fstab.
-# Parted changes the PARTUUID fo the disk image, we need to get the new one.
-echo "Setting up new partuuid."
-#blkid -o export "${loopdev}"
-#blkid -o export "${loopdev}p1"
-#blkid -o export "${loopdev}p2"
-uuidp1=$(blkid -o export "${loopdev}p1" | grep "^UUID" | sed -r 's/UUID=([a-zA-Z0-9-]*).*/\1/')
-uuidp2=$(blkid -o export "${loopdev}p2" | grep "^UUID" | sed -r 's/UUID=([a-zA-Z0-9-]*).*/\1/')
-#echo "New partuuid: ${partuuid}"
-echo "uuidp1: ${uuidp1}"
-echo "uuidp2: ${uuidp2}"
+# Raspbian images use PARTUUID in the /boot/cmdline.txt to 
+# boot from the /dev/mmcblk0p2. We are going to replace the PARTUUID
+# with the good old /dev/mmcblk0p2 again.
+# Since parted changed the
+echo "Setting up boot partition mappings."
 
 echo "cmdline.txt before:"
 cat "${mount}/boot/cmdline.txt"
-sed -i "s/PARTUUID=[a-zA-Z0-9-]*/UUID=${uuidp2}/" "${mount}/boot/cmdline.txt"
+sed -i "s/root=[a-zA-Z0-9-=]*/root=\/dev\/mmcblk0p2/" "${mount}/boot/cmdline.txt"
 echo "cmdline.txt after:"
 cat "${mount}/boot/cmdline.txt"
 
 echo "fstab before:"
 cat "${mount}/etc/fstab"
-sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-01/UUID=${uuidp1}/g" "${mount}/etc/fstab"
-sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-02/UUID=${uuidp2}/g" "${mount}/etc/fstab"
+sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-01/\/dev\/mmcblk0p1/g" "${mount}/etc/fstab"
+sed -i -r "s/PARTUUID=[a-zA-Z0-9]{6,10}-02/\/dev\/mmcblk0p2/g" "${mount}/etc/fstab"
 echo "fstab after:"
 cat "${mount}/etc/fstab"
 
