@@ -12,7 +12,6 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Some useful constants
-OF_VERSION="v0.9.8"
 image="opm.img"
 mount="mnt"
 script="setup"
